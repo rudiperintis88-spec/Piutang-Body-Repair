@@ -6,9 +6,9 @@
 <title>Piutang Body Repair — PT Perintis Perkasa</title>
 <style>
   :root{
-    --bg:#0b0e14; --panel:#12151d; --panel-2:#171b26; --border:#232838;
-    --ink:#f2efe9; --muted:#8b93a7; --muted-2:#5f6785;
-    --green:#5fd889; --amber:#e8b055; --blue:#7a8ef2; --red:#e5636b;
+    --bg:#f7f7f5; --panel:#ffffff; --panel-2:#f0f0ee; --border:#e2e2de;
+    --ink:#1c1c1a; --muted:#6b6b66; --muted-2:#8a8a84;
+    --green:#2f9e5c; --amber:#c98a1f; --blue:#3a5bd9; --red:#c8394a;
   }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:'Segoe UI',Inter,-apple-system,sans-serif;}
@@ -31,7 +31,7 @@
   hr{border:none;border-top:1px solid var(--border);margin:24px 0;}
   .total-card{
     background:var(--panel);border:1px solid var(--border);border-radius:16px;
-    padding:26px 30px;margin-bottom:24px;
+    padding:26px 30px;margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,0.05);
     display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;
   }
   .total-card .amount{font-family:Georgia,serif;font-weight:600;font-size:38px;}
@@ -43,11 +43,11 @@
   }
   #search:focus{outline:none;border-color:var(--blue);}
   .list{display:flex;flex-direction:column;gap:10px;}
-  .debtor{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+  .debtor{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);}
   .debtor-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;cursor:pointer;gap:16px;}
   .debtor-head:hover{background:var(--panel-2);}
   .debtor-name{font-weight:600;font-size:15px;}
-  .debtor-name .cab{display:inline-block;margin-left:8px;font-size:10.5px;font-weight:600;color:var(--muted-2);background:#1b2030;padding:2px 8px;border-radius:20px;}
+  .debtor-name .cab{display:inline-block;margin-left:8px;font-size:10.5px;font-weight:600;color:var(--muted-2);background:#ececeb;padding:2px 8px;border-radius:20px;}
   .debtor-meta{color:var(--muted);font-size:12.5px;margin-top:3px;}
   .debtor-right{display:flex;align-items:center;gap:14px;}
   .debtor-total{font-family:Georgia,serif;font-size:19px;text-align:right;}
@@ -64,7 +64,7 @@
   td{padding:9px 6px;border-bottom:1px solid var(--border);font-size:13px;}
   tr:last-child td{border-bottom:none;}
   .bar-title{font-size:12px;color:var(--muted);margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.04em;}
-  .banner{background:#241417;border:1px solid #3a1c22;color:var(--red);border-radius:10px;padding:14px 18px;font-size:13px;margin-bottom:20px;display:none;}
+  .banner{background:#fdecee;border:1px solid #f3b9c0;color:var(--red);border-radius:10px;padding:14px 18px;font-size:13px;margin-bottom:20px;display:none;}
   .loading{color:var(--muted);font-size:13px;padding:40px 0;text-align:center;}
   .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--muted-2);border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite;vertical-align:-2px;margin-right:6px;}
   @keyframes spin{to{transform:rotate(360deg);}}
@@ -77,7 +77,7 @@
   }
   .tab-btn:hover{color:var(--ink);}
   .tab-btn.active{background:var(--blue);color:#0b0e14;border-color:var(--blue);}
-  .cabang-group{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:10px;}
+  .cabang-group{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.05);}
   .cabang-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;cursor:pointer;gap:16px;}
   .cabang-head:hover{background:var(--panel-2);}
   .cabang-title{font-weight:700;font-size:16px;}
@@ -228,11 +228,8 @@ function processRows(rows) {
     nama = nameMap[nama] || nama;
     const nopol = r[3] || '';
     const faktur = r[4] || '';
-    const top = r[5] || '';
     const tgljto = (r[6] || '').trim();
     const jumlah = parseAmount(r[7]);
-    const giro = r[8] || '';
-    const saCode = r[9] || '';
     const sa = r[10] || '';
     const hari = r[11] || '';
     const cabang = r[14] || '';
@@ -244,7 +241,7 @@ function processRows(rows) {
     const d = byDebitur[nama];
     d.total += jumlah;
     d.count += 1;
-    d.invoices.push({ faktur, tgljto, nopol, sa, saCode, top, giro, jumlah, hari, cabang });
+    d.invoices.push({ faktur, tgljto, nopol, sa, jumlah, hari, cabang });
     grandTotal += jumlah;
 
     let key = 'unknown';
@@ -426,7 +423,7 @@ function renderAgingCards(data) {
   wrap.className = 'aging-grid';
   Object.values(buckets).forEach(b => {
     const card = document.createElement('div');
-    card.style.cssText = `background:${b.warn ? '#241417' : 'var(--panel)'};border:1px solid ${b.warn ? '#3a1c22' : 'var(--border)'};border-radius:14px;padding:18px 20px;`;
+    card.style.cssText = `background:${b.warn ? '#fdecee' : 'var(--panel)'};border:1px solid ${b.warn ? '#f3b9c0' : 'var(--border)'};border-radius:14px;padding:18px 20px;`;
     card.innerHTML = `
       <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px;">
         <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${b.color};margin-right:6px;"></span>${b.label}
@@ -436,91 +433,6 @@ function renderAgingCards(data) {
     `;
     wrap.appendChild(card);
   });
-  return wrap;
-}
-
-function renderPriorityPanel(data) {
-  const overdue = [];
-  data.debtors.forEach(d => {
-    d.invoices.forEach(inv => {
-      const h = parseInt(inv.hari, 10);
-      if (!isNaN(h) && h > 26) {
-        overdue.push({ debitur: d.name, cabang: d.cabang, ...inv, hariNum: h });
-      }
-    });
-  });
-  if (overdue.length === 0) return null;
-
-  overdue.sort((a, b) => b.hariNum - a.hariNum);
-  const totalTertunggak = overdue.reduce((s, o) => s + o.jumlah, 0);
-  const debiturSet = new Set(overdue.map(o => o.debitur));
-
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'margin-bottom:28px;';
-
-  const titleRow = document.createElement('div');
-  titleRow.style.cssText = 'display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:12px;';
-  titleRow.innerHTML = `
-    <div style="font-family:Georgia,serif;font-weight:600;font-size:24px;">Prioritas Penagihan</div>
-    <div style="color:var(--muted);font-size:12.5px;">faktur dengan umur &gt; 26 hari</div>
-  `;
-  wrap.appendChild(titleRow);
-
-  const panel = document.createElement('div');
-  panel.style.cssText = 'background:#fdecee;border:1px solid #f3b9c0;border-radius:14px;overflow:hidden;';
-
-  const header = document.createElement('div');
-  header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:16px 22px;';
-  header.innerHTML = `
-    <div style="color:var(--red);font-weight:700;font-size:16px;">
-      <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--red);margin-right:8px;"></span>${overdue.length} faktur butuh tindak lanjut segera
-    </div>
-    <div style="color:var(--ink);font-size:13.5px;">total tertunggak <b>${formatRp(totalTertunggak)}</b> &middot; ${debiturSet.size} debitur</div>
-  `;
-  panel.appendChild(header);
-
-  const table = document.createElement('table');
-  table.style.cssText = 'width:100%;border-collapse:collapse;min-width:800px;';
-  const scrollWrap = document.createElement('div');
-  scrollWrap.style.cssText = 'overflow-x:auto;';
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th style="padding:10px 14px;">Nama Debitur</th>
-        <th style="padding:10px 14px;">No Polisi</th>
-        <th style="padding:10px 14px;">Faktur No.</th>
-        <th style="padding:10px 14px;">TOP</th>
-        <th style="padding:10px 14px;">Tgl.Jto</th>
-        <th class="num" style="padding:10px 14px;">Jumlah</th>
-        <th style="padding:10px 14px;">Giro</th>
-        <th style="padding:10px 14px;">S A</th>
-        <th style="padding:10px 14px;">Nama SA</th>
-        <th class="num" style="padding:10px 14px;">Hari</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  `;
-  const tbody = table.querySelector('tbody');
-  overdue.forEach(o => {
-    const tr = document.createElement('tr');
-    tr.style.borderTop = '1px solid #f3b9c0';
-    tr.innerHTML = `
-      <td style="padding:12px 14px;font-weight:600;">${o.debitur}</td>
-      <td style="padding:12px 14px;color:var(--muted);">${o.nopol || '-'}</td>
-      <td style="padding:12px 14px;">${o.faktur}</td>
-      <td style="padding:12px 14px;">${o.top || '-'}</td>
-      <td style="padding:12px 14px;">${o.tgljto}</td>
-      <td class="num" style="padding:12px 14px;font-weight:600;">${formatRp(o.jumlah)}</td>
-      <td style="padding:12px 14px;">${o.giro || '-'}</td>
-      <td style="padding:12px 14px;">${o.saCode || '-'}</td>
-      <td style="padding:12px 14px;">${o.sa}</td>
-      <td class="num" style="padding:12px 14px;color:var(--red);font-weight:700;">${o.hariNum} hr</td>
-    `;
-    tbody.appendChild(tr);
-  });
-  scrollWrap.appendChild(table);
-  panel.appendChild(scrollWrap);
-  wrap.appendChild(panel);
   return wrap;
 }
 
@@ -560,9 +472,6 @@ function render(data) {
   } else {
     renderCabangTab(content, data);
   }
-
-  const priorityPanel = renderPriorityPanel(data);
-  if (priorityPanel) content.appendChild(priorityPanel);
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
