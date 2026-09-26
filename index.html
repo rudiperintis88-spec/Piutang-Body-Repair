@@ -6,12 +6,19 @@
 <title>Piutang Body Repair — PT Perintis Perkasa</title>
 <style>
   :root{
+    --bg:#0b0e14; --panel:#12151d; --panel-2:#171b26; --border:#232838;
+    --ink:#f2efe9; --muted:#8b93a7; --muted-2:#5f6785;
+    --green:#5fd889; --amber:#e8b055; --blue:#7a8ef2; --red:#e5636b;
+    --banner-bg:#241417; --banner-border:#3a1c22; --cab-bg:#1b2030;
+  }
+  :root[data-theme="light"]{
     --bg:#f7f7f5; --panel:#ffffff; --panel-2:#f0f0ee; --border:#e2e2de;
     --ink:#1c1c1a; --muted:#6b6b66; --muted-2:#8a8a84;
     --green:#2f9e5c; --amber:#c98a1f; --blue:#3a5bd9; --red:#c8394a;
+    --banner-bg:#fdecee; --banner-border:#f3b9c0; --cab-bg:#ececeb;
   }
   *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Segoe UI',Inter,-apple-system,sans-serif;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Segoe UI',Inter,-apple-system,sans-serif;transition:background 0.2s,color 0.2s;}
   .wrap{max-width:1180px;margin:0 auto;padding:48px 32px 80px;}
   .topline{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:8px;}
   .brand{color:var(--muted);font-size:15px;margin:0 0 8px;}
@@ -31,7 +38,7 @@
   hr{border:none;border-top:1px solid var(--border);margin:24px 0;}
   .total-card{
     background:var(--panel);border:1px solid var(--border);border-radius:16px;
-    padding:26px 30px;margin-bottom:24px;box-shadow:0 1px 3px rgba(0,0,0,0.05);
+    padding:26px 30px;margin-bottom:24px;
     display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;
   }
   .total-card .amount{font-family:Georgia,serif;font-weight:600;font-size:38px;}
@@ -43,11 +50,11 @@
   }
   #search:focus{outline:none;border-color:var(--blue);}
   .list{display:flex;flex-direction:column;gap:10px;}
-  .debtor{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);}
+  .debtor{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
   .debtor-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;cursor:pointer;gap:16px;}
   .debtor-head:hover{background:var(--panel-2);}
   .debtor-name{font-weight:600;font-size:15px;}
-  .debtor-name .cab{display:inline-block;margin-left:8px;font-size:10.5px;font-weight:600;color:var(--muted-2);background:#ececeb;padding:2px 8px;border-radius:20px;}
+  .debtor-name .cab{display:inline-block;margin-left:8px;font-size:10.5px;font-weight:600;color:var(--muted-2);background:var(--cab-bg);padding:2px 8px;border-radius:20px;}
   .debtor-meta{color:var(--muted);font-size:12.5px;margin-top:3px;}
   .debtor-right{display:flex;align-items:center;gap:14px;}
   .debtor-total{font-family:Georgia,serif;font-size:19px;text-align:right;}
@@ -64,7 +71,7 @@
   td{padding:9px 6px;border-bottom:1px solid var(--border);font-size:13px;}
   tr:last-child td{border-bottom:none;}
   .bar-title{font-size:12px;color:var(--muted);margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.04em;}
-  .banner{background:#fdecee;border:1px solid #f3b9c0;color:var(--red);border-radius:10px;padding:14px 18px;font-size:13px;margin-bottom:20px;display:none;}
+  .banner{background:var(--banner-bg);border:1px solid var(--banner-border);color:var(--red);border-radius:10px;padding:14px 18px;font-size:13px;margin-bottom:20px;display:none;}
   .loading{color:var(--muted);font-size:13px;padding:40px 0;text-align:center;}
   .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--muted-2);border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite;vertical-align:-2px;margin-right:6px;}
   @keyframes spin{to{transform:rotate(360deg);}}
@@ -77,7 +84,7 @@
   }
   .tab-btn:hover{color:var(--ink);}
   .tab-btn.active{background:var(--blue);color:#0b0e14;border-color:var(--blue);}
-  .cabang-group{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.05);}
+  .cabang-group{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:10px;}
   .cabang-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;cursor:pointer;gap:16px;}
   .cabang-head:hover{background:var(--panel-2);}
   .cabang-title{font-weight:700;font-size:16px;}
@@ -100,6 +107,7 @@
       <p class="sub" id="source-sub">Sumber: Laporan Piutang Body Repair</p>
     </div>
     <div class="controls">
+      <button class="btn secondary" id="theme-toggle">&#9788; Tema</button>
       <label class="toggle"><input type="checkbox" id="auto-toggle" checked> Auto-refresh 60 dtk</label>
       <button class="btn" id="refresh-btn">&#8635; Refresh sekarang</button>
     </div>
@@ -228,8 +236,11 @@ function processRows(rows) {
     nama = nameMap[nama] || nama;
     const nopol = r[3] || '';
     const faktur = r[4] || '';
+    const top = r[5] || '';
     const tgljto = (r[6] || '').trim();
     const jumlah = parseAmount(r[7]);
+    const giro = r[8] || '';
+    const saCode = r[9] || '';
     const sa = r[10] || '';
     const hari = r[11] || '';
     const cabang = r[14] || '';
@@ -241,7 +252,7 @@ function processRows(rows) {
     const d = byDebitur[nama];
     d.total += jumlah;
     d.count += 1;
-    d.invoices.push({ faktur, tgljto, nopol, sa, jumlah, hari, cabang });
+    d.invoices.push({ faktur, tgljto, nopol, sa, saCode, top, giro, jumlah, hari, cabang });
     grandTotal += jumlah;
 
     let key = 'unknown';
@@ -423,7 +434,7 @@ function renderAgingCards(data) {
   wrap.className = 'aging-grid';
   Object.values(buckets).forEach(b => {
     const card = document.createElement('div');
-    card.style.cssText = `background:${b.warn ? '#fdecee' : 'var(--panel)'};border:1px solid ${b.warn ? '#f3b9c0' : 'var(--border)'};border-radius:14px;padding:18px 20px;`;
+    card.style.cssText = `background:${b.warn ? 'var(--banner-bg)' : 'var(--panel)'};border:1px solid ${b.warn ? 'var(--banner-border)' : 'var(--border)'};border-radius:14px;padding:18px 20px;`;
     card.innerHTML = `
       <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px;">
         <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${b.color};margin-right:6px;"></span>${b.label}
@@ -435,6 +446,7 @@ function renderAgingCards(data) {
   });
   return wrap;
 }
+
 
 function render(data) {
   lastData = data;
@@ -509,6 +521,26 @@ async function loadData() {
 }
 
 document.getElementById('refresh-btn').addEventListener('click', loadData);
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const btn = document.getElementById('theme-toggle');
+  btn.innerHTML = theme === 'light' ? '&#9789; Tema' : '&#9788; Tema';
+}
+
+let savedTheme = 'dark';
+try {
+  savedTheme = localStorage.getItem('dashboard-theme') || 'dark';
+} catch (e) { /* localStorage unavailable, default to dark */ }
+applyTheme(savedTheme);
+
+document.getElementById('theme-toggle').addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  const next = current === 'light' ? 'dark' : 'light';
+  applyTheme(next);
+  try { localStorage.setItem('dashboard-theme', next); } catch (e) { /* ignore */ }
+});
+
 
 const autoToggle = document.getElementById('auto-toggle');
 function setupAutoRefresh() {
