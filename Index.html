@@ -172,6 +172,19 @@ function parseDateDDMMYYYY(s) {
 }
 
 const MONTH_NAMES = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+const MONTH_FULL_ID = ['','januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'];
+
+function extractPerDate(title) {
+  if (!title) return '';
+  const re = new RegExp('(\\d{1,2})\\s+(' + MONTH_FULL_ID.slice(1).join('|') + ')\\s+(\\d{4})', 'i');
+  const m = title.match(re);
+  if (!m) return '';
+  const day = m[1].padStart(2, '0');
+  const monthIdx = MONTH_FULL_ID.indexOf(m[2].toLowerCase());
+  const monthAbbr = monthIdx > 0 ? MONTH_NAMES[monthIdx] : m[2];
+  const year = m[3];
+  return 'Per: ' + day + '-' + monthAbbr + '-' + year;
+}
 
 function processRows(rows) {
   // find header row: first cell === 'No'
@@ -443,7 +456,7 @@ function render(data) {
   if (sourceSub) sourceSub.textContent = 'Sumber: Laporan Piutang Body Repair (' + data.grand_count + ' faktur)';
 
   const opnameTitle = document.getElementById('opname-title');
-  if (opnameTitle) opnameTitle.textContent = data.report_title || '';
+  if (opnameTitle) opnameTitle.textContent = extractPerDate(data.report_title) || data.report_title || '';
 
   document.getElementById('tabs').style.display = 'flex';
 
