@@ -228,8 +228,11 @@ function processRows(rows) {
     nama = nameMap[nama] || nama;
     const nopol = r[3] || '';
     const faktur = r[4] || '';
+    const top = r[5] || '';
     const tgljto = (r[6] || '').trim();
     const jumlah = parseAmount(r[7]);
+    const giro = r[8] || '';
+    const saCode = r[9] || '';
     const sa = r[10] || '';
     const hari = r[11] || '';
     const cabang = r[14] || '';
@@ -241,7 +244,7 @@ function processRows(rows) {
     const d = byDebitur[nama];
     d.total += jumlah;
     d.count += 1;
-    d.invoices.push({ faktur, tgljto, nopol, sa, jumlah, hari, cabang });
+    d.invoices.push({ faktur, tgljto, nopol, sa, saCode, top, giro, jumlah, hari, cabang });
     grandTotal += jumlah;
 
     let key = 'unknown';
@@ -483,14 +486,16 @@ function renderPriorityPanel(data) {
   table.innerHTML = `
     <thead>
       <tr>
-        <th style="padding:10px 14px;">Debitur</th>
-        <th style="padding:10px 14px;">No. Faktur</th>
-        <th style="padding:10px 14px;">Cabang</th>
+        <th style="padding:10px 14px;">Nama Debitur</th>
         <th style="padding:10px 14px;">No Polisi</th>
+        <th style="padding:10px 14px;">Faktur No.</th>
+        <th style="padding:10px 14px;">TOP</th>
+        <th style="padding:10px 14px;">Tgl.Jto</th>
         <th class="num" style="padding:10px 14px;">Jumlah</th>
-        <th style="padding:10px 14px;">Tgl. Jatuh Tempo</th>
-        <th class="num" style="padding:10px 14px;">Umur</th>
-        <th style="padding:10px 14px;">Sales PIC</th>
+        <th style="padding:10px 14px;">Giro</th>
+        <th style="padding:10px 14px;">S A</th>
+        <th style="padding:10px 14px;">Nama SA</th>
+        <th class="num" style="padding:10px 14px;">Hari</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -501,13 +506,15 @@ function renderPriorityPanel(data) {
     tr.style.borderTop = '1px solid #f3b9c0';
     tr.innerHTML = `
       <td style="padding:12px 14px;font-weight:600;">${o.debitur}</td>
-      <td style="padding:12px 14px;">${o.faktur}</td>
-      <td style="padding:12px 14px;"><span style="background:#eef0fb;color:var(--blue);font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:20px;">${o.cabang || '-'}</span></td>
       <td style="padding:12px 14px;color:var(--muted);">${o.nopol || '-'}</td>
-      <td class="num" style="padding:12px 14px;font-weight:600;">${formatRp(o.jumlah)}</td>
+      <td style="padding:12px 14px;">${o.faktur}</td>
+      <td style="padding:12px 14px;">${o.top || '-'}</td>
       <td style="padding:12px 14px;">${o.tgljto}</td>
-      <td class="num" style="padding:12px 14px;color:var(--red);font-weight:700;">${o.hariNum} hr</td>
+      <td class="num" style="padding:12px 14px;font-weight:600;">${formatRp(o.jumlah)}</td>
+      <td style="padding:12px 14px;">${o.giro || '-'}</td>
+      <td style="padding:12px 14px;">${o.saCode || '-'}</td>
       <td style="padding:12px 14px;">${o.sa}</td>
+      <td class="num" style="padding:12px 14px;color:var(--red);font-weight:700;">${o.hariNum} hr</td>
     `;
     tbody.appendChild(tr);
   });
@@ -537,9 +544,6 @@ function render(data) {
   content.appendChild(totalCard);
   content.appendChild(renderAgingCards(data));
 
-  const priorityPanel = renderPriorityPanel(data);
-  if (priorityPanel) content.appendChild(priorityPanel);
-
   const sourceSub = document.getElementById('source-sub');
   if (sourceSub) sourceSub.textContent = 'Sumber: Laporan Piutang Body Repair (' + data.grand_count + ' faktur)';
 
@@ -556,6 +560,9 @@ function render(data) {
   } else {
     renderCabangTab(content, data);
   }
+
+  const priorityPanel = renderPriorityPanel(data);
+  if (priorityPanel) content.appendChild(priorityPanel);
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
