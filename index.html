@@ -1653,11 +1653,11 @@ function buildDiv(name,items,raw,fallbackAll,pj,wh,wipRaw,dep){
   var pmS={},pmK={},pmA={};
   nonp.forEach(function(it){var k=it.nsup||(it.pol+'|'+it.nsa);if(!pm[k]){pm[k]=it;pl.push(k);pmS[k]=0;pmK[k]=[];pmA[k]=[]}pmS[k]+=it.jum;if(it.ket&&pmK[k].indexOf(it.ket)<0)pmK[k].push(it.ket);if(it.ala&&pmA[k].indexOf(it.ala)<0)pmA[k].push(it.ala)});
   pl.forEach(function(k){var it=pm[k];rows.push([String(rows.length+1),'#N/A','',it.nsa,it.pol,it.dev,'#N/A','#N/A','#N/A','#N/A',it.hari===null?'':String(it.hari),fint(pmS[k]),'','','',pmK[k].join('; '),pmA[k].join('; ')]);flags.push(true)});
-  sheets.push({name:RECAP,kind:'table',heads:['No','Tgl PKB/WO','No PKB/WO','Nama SA','NoPolisi','Devisi','Nama Customer','Type',SK,'Service Kategori','Hari','Total Nominal','Tgl Penitipan','No.Penitipan','Total Penitipan','Keterangan','Alasan'],rows:rows,flags:flags,sumCols:['Total Nominal','Total Penitipan'],
+  sheets.push({name:RECAP,kind:'table',heads:['No','Tgl PKB/WO','No PKB/WO','Nama SA','NoPolisi','Divisi','Nama Customer','Type',SK,'Service Kategori','Hari','Total Nominal','Tgl Penitipan','No.Penitipan','Total Penitipan','Keterangan','Alasan'],rows:rows,flags:flags,sumCols:['Total Nominal','Total Penitipan'],
     facts:[],
     note:'Baris Non PKB: No PKB/WO kosong dan Nama Customer #N/A. Hari diambil dari kolom Hari (V) di Sheet1.',chip:'Non PKB',dateCol:1});
 
-  var H=['No',SK,'TglSupply','NoSupply','No PKB/WO','KodeBrg','Nama Barang','Jlh','Harga','Jumlah','Nama SA','NoPolisi','Devisi','Nama Customer','Type','Service Kategori','Tgl PKB/WO','Hari','Tgl Penitipan','No.Penitipan','Total Penitipan','Keterangan','Alasan'];
+  var H=['No',SK,'TglSupply','NoSupply','No PKB/WO','KodeBrg','Nama Barang','Jlh','Harga','Jumlah','Nama SA','NoPolisi','Divisi','Nama Customer','Type','Service Kategori','Tgl PKB/WO','Hari','Tgl Penitipan','No.Penitipan','Total Penitipan','Keterangan','Alasan'];
   var q=items.slice().sort(function(a,b){
     var oa=rank(a.kat),ob=rank(b.kat);
     return (oa-ob)||cmpNullLast(a.two,b.two)||cmpNullLast(a.wo,b.wo)||cmpNullLast(a.tsup,b.tsup)||cmpNullLast(a.nsup,b.nsup);
@@ -1902,7 +1902,7 @@ function render(){
   grid.className='grid';
   if(!dv.summary.rows&&s.name!==WIP||!dv.summary.rows&&!s.rows.length){
     toolsEl.hidden=true;factsEl.innerHTML='';
-    grid.innerHTML='<div class="empty"><b>Belum ada data untuk '+esc(dv.name)+'.</b><br>Kolom Devisi di Sheet1 belum memuat baris untuk divisi ini.</div>';
+    grid.innerHTML='<div class="empty"><b>Belum ada data untuk '+esc(dv.name)+'.</b><br>Kolom Divisi di Sheet1 belum memuat baris untuk divisi ini.</div>';
     afterRender();return;
   }
   if(!s.rows.length){
@@ -2038,7 +2038,7 @@ function kcardHTML(d){
 function kartuHTML(){
   var dv=D(),list=(dv.name===ALL)?model.divs.filter(function(d){return d.name!==ALL}):[dv];
   var out=list.filter(function(d){return d.summary.cats.length}).map(kcardHTML);
-  if(!out.length)return '<div class="empty"><b>Belum ada data untuk '+esc(dv.name)+'.</b><br>Kolom Devisi di Sheet1 belum memuat baris untuk divisi ini.</div>';
+  if(!out.length)return '<div class="empty"><b>Belum ada data untuk '+esc(dv.name)+'.</b><br>Kolom Divisi di Sheet1 belum memuat baris untuk divisi ini.</div>';
   return '<div class="kcards">'+out.join('')+'</div>';
 }
 /* ringkasan gabungan: Charge Kategori x divisi */
