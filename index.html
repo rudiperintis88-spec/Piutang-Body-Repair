@@ -1557,7 +1557,7 @@ function divOf(dev){
 }
 function build(raw){
   var ctMap={},wipMap={};
-  raw.ct.forEach(function(c){if(c[0]&&!ctMap[c[0]])ctMap[c[0]]={type:str(c[1]),srv:str(c[2]),chg:normChg(c[3]),tgl:c[4]||'',nama:str(c[5])}});
+  raw.ct.forEach(function(c){if(c[0]&&!ctMap[c[0]])ctMap[c[0]]={type:str(c[1]),srv:normChg(c[2]),chg:normChg(c[3]),tgl:c[4]||'',nama:str(c[5])}});
   var wh=raw.wip.heads,wi={};wh.forEach(function(h,k){wi[h]=k});
   raw.wip.rows.forEach(function(w){var k=w[wi['NoWO']];if(k&&!wipMap[k])wipMap[k]={type:str(w[wi['Type']]),nama:str(w[wi['Nama']]),chg:normChg(w[wi['Charge']])}});
   WOTGL={};Object.keys(ctMap).forEach(function(k){if(ctMap[k].tgl)WOTGL[k]=ctMap[k].tgl});
@@ -1566,7 +1566,7 @@ function build(raw){
   raw.s1.forEach(function(x){
     if(typeof x[0]!=='number'&&!(typeof x[0]==='string'&&x[0]!==''&&!isNaN(+x[0])))return;
     var wo=str(x[3]),it={tsup:x[1]||'',nsup:str(x[2]),wo:wo,kode:str(x[4]),nama:str(x[5]),jlh:+x[6]||0,harga:+x[7]||0,jum:+x[8]||0,ksa:str(x[9]),nsa:str(x[10]),pol:str(x[11]),dev:str(x[12]),
-      cust:str(x[13]),typ:str(x[14]),srv:str(x[15]),chg:normChg(x[16]),two:emp(x[17])?'':String(x[17]),hari:(typeof x[20]==='number')?x[20]:null,ket:str(x[18]).trim(),ala:str(x[19]).trim()};
+      cust:str(x[13]),typ:str(x[14]),srv:normChg(x[15]),chg:normChg(x[16]),two:emp(x[17])?'':String(x[17]),hari:(typeof x[20]==='number')?x[20]:null,ket:str(x[18]).trim(),ala:str(x[19]).trim()};
     if(wo){
       var c=ctMap[wo],w=wipMap[wo],fb=FALLBACK[wo];
       if(c){it.cust=it.cust||c.nama;it.srv=it.srv||c.srv;it.typ=it.typ||c.type;it.chg=it.chg||c.chg;it.two=it.two||c.tgl}
@@ -1630,11 +1630,11 @@ function buildDiv(name,items,raw,fallbackAll,pj,wh,wipRaw,dep){
   var wm={},worder=[];
   items.forEach(function(it){
     if(!it.wo)return;
-    var g=wm[it.wo];if(!g){g=wm[it.wo]={wo:it.wo,tgl:'',sa:'',pol:'',dev:'',cust:'',typ:'',kat:'',hari:null,nom:0,kets:[],alas:[]};worder.push(it.wo)}
+    var g=wm[it.wo];if(!g){g=wm[it.wo]={wo:it.wo,tgl:'',sa:'',pol:'',dev:'',cust:'',typ:'',srv:'',kat:'',hari:null,nom:0,kets:[],alas:[]};worder.push(it.wo)}
     g.nom+=it.jum;
     if(it.ket&&g.kets.indexOf(it.ket)<0)g.kets.push(it.ket);
     if(it.ala&&g.alas.indexOf(it.ala)<0)g.alas.push(it.ala);
-    if(!g.tgl)g.tgl=it.two;if(!g.sa)g.sa=it.nsa;if(!g.pol)g.pol=it.pol;if(!g.dev)g.dev=it.dev;if(!g.cust)g.cust=it.cust;if(!g.typ)g.typ=it.typ;if(!g.kat)g.kat=it.kat;
+    if(!g.tgl)g.tgl=it.two;if(!g.sa)g.sa=it.nsa;if(!g.pol)g.pol=it.pol;if(!g.dev)g.dev=it.dev;if(!g.cust)g.cust=it.cust;if(!g.typ)g.typ=it.typ;if(!g.kat)g.kat=it.kat;if(!g.srv)g.srv=it.srv;
     if(g.hari===null&&it.hari!==null)g.hari=it.hari;
   });
   var W=worder.map(function(k){var g=wm[k];g.mon=g.tgl?String(g.tgl).slice(0,7):'';g.o=rank(g.kat||'Tanpa Kategori');return g});
@@ -1650,16 +1650,16 @@ function buildDiv(name,items,raw,fallbackAll,pj,wh,wipRaw,dep){
   }
 
   var rows=[],flags=[];
-  W.forEach(function(g,k){rows.push([String(k+1),fdt(g.tgl),g.wo,g.sa,g.pol,g.dev,g.cust,g.typ,g.kat,g.hari===null?'':String(g.hari),fint(g.nom)].concat(depCells(g.wo),[g.kets.join('; '),g.alas.join('; ')]));flags.push(false)});
+  W.forEach(function(g,k){rows.push([String(k+1),fdt(g.tgl),g.wo,g.sa,g.pol,g.dev,g.cust,g.typ,g.kat,g.srv,g.hari===null?'':String(g.hari),fint(g.nom)].concat(depCells(g.wo),[g.kets.join('; '),g.alas.join('; ')]));flags.push(false)});
   var nonp=items.filter(function(it){return it.kat==='Non PKB'}),pm={},pl=[];
   var pmS={},pmK={},pmA={};
   nonp.forEach(function(it){var k=it.nsup||(it.pol+'|'+it.nsa);if(!pm[k]){pm[k]=it;pl.push(k);pmS[k]=0;pmK[k]=[];pmA[k]=[]}pmS[k]+=it.jum;if(it.ket&&pmK[k].indexOf(it.ket)<0)pmK[k].push(it.ket);if(it.ala&&pmA[k].indexOf(it.ala)<0)pmA[k].push(it.ala)});
-  pl.forEach(function(k){var it=pm[k];rows.push([String(rows.length+1),'#N/A','',it.nsa,it.pol,it.dev,'#N/A','#N/A','#N/A',it.hari===null?'':String(it.hari),fint(pmS[k]),'','','',pmK[k].join('; '),pmA[k].join('; ')]);flags.push(true)});
-  sheets.push({name:RECAP,kind:'table',heads:['No','Tgl PKB/WO','No PKB/WO','Nama SA','NoPolisi','Devisi','Nama Customer','Type',SK,'Hari','Total Nominal','Tgl Penitipan','No.Penitipan','Total Penitipan','Keterangan','Alasan'],rows:rows,flags:flags,sumCols:['Total Nominal','Total Penitipan'],
+  pl.forEach(function(k){var it=pm[k];rows.push([String(rows.length+1),'#N/A','',it.nsa,it.pol,it.dev,'#N/A','#N/A','#N/A','#N/A',it.hari===null?'':String(it.hari),fint(pmS[k]),'','','',pmK[k].join('; '),pmA[k].join('; ')]);flags.push(true)});
+  sheets.push({name:RECAP,kind:'table',heads:['No','Tgl PKB/WO','No PKB/WO','Nama SA','NoPolisi','Devisi','Nama Customer','Type',SK,'Service Kategori','Hari','Total Nominal','Tgl Penitipan','No.Penitipan','Total Penitipan','Keterangan','Alasan'],rows:rows,flags:flags,sumCols:['Total Nominal','Total Penitipan'],
     facts:[],
     note:'Baris Non PKB: No PKB/WO kosong dan Nama Customer #N/A. Hari diambil dari kolom Hari (V) di Sheet1.',chip:'Non PKB',dateCol:1});
 
-  var H=['No',SK,'TglSupply','NoSupply','No PKB/WO','KodeBrg','Nama Barang','Jlh','Harga','Jumlah','Nama SA','NoPolisi','Devisi','Nama Customer','Type','Tgl PKB/WO','Hari','Tgl Penitipan','No.Penitipan','Total Penitipan','Keterangan','Alasan'];
+  var H=['No',SK,'TglSupply','NoSupply','No PKB/WO','KodeBrg','Nama Barang','Jlh','Harga','Jumlah','Nama SA','NoPolisi','Devisi','Nama Customer','Type','Service Kategori','Tgl PKB/WO','Hari','Tgl Penitipan','No.Penitipan','Total Penitipan','Keterangan','Alasan'];
   var q=items.slice().sort(function(a,b){
     var oa=rank(a.kat),ob=rank(b.kat);
     return (oa-ob)||cmpNullLast(a.two,b.two)||cmpNullLast(a.wo,b.wo)||cmpNullLast(a.tsup,b.tsup)||cmpNullLast(a.nsup,b.nsup);
@@ -1669,10 +1669,10 @@ function buildDiv(name,items,raw,fallbackAll,pj,wh,wipRaw,dep){
   q.forEach(function(it,k){
     var n=it.kat==='Non PKB';
     rr.push([String(k+1),it.kat,fdtt(it.tsup),it.nsup,it.wo,it.kode,it.nama,fint(it.jlh),fint(it.harga),fint(it.jum),it.nsa,it.pol,it.dev,
-      n?'#N/A':it.cust,n?'#N/A':it.typ,n?'#N/A':fdt(it.two),it.hari===null?'':String(it.hari)].concat(depCells(it.wo),[it.ket,it.ala]));
+      n?'#N/A':it.cust,n?'#N/A':it.typ,n?'#N/A':it.srv,n?'#N/A':fdt(it.two),it.hari===null?'':String(it.hari)].concat(depCells(it.wo),[it.ket,it.ala]));
     nums.push([it.jlh,it.jum]);fl.push(n);
   });
-  var nt='Gabungan semua charge kategori '+(isAll?'dari ketiga divisi':'divisi '+name)+' ('+summary.cats.map(function(c){return c.k}).join(', ')+'). Charge Kategori diambil dari data Charge To (bukan SrvCateCode).';
+  var nt='Gabungan semua charge kategori '+(isAll?'dari ketiga divisi':'divisi '+name)+' ('+summary.cats.map(function(c){return c.k}).join(', ')+'). Charge Kategori diambil dari data Charge To; kolom Service Kategori (SrvCateCode) tetap ditampilkan di samping Type.';
   if(fbn.length)nt+=' WO '+fbn.join(' dan ')+' tidak ada di sheet Charge To: nama, tipe, dan charge diambil dari PKB WIP, kategori dan tanggal WO dari catatan tambahan.';
   sheets.push({name:SK,kind:'table',heads:H,rows:rr,nums:nums,flags:fl,grand:{qty:totQ,val:totV},repdate:fdt(raw.repISO),chipCol:1,
     facts:[],note:nt,chip:null,dateCol:H.indexOf('Tgl PKB/WO'),hariCol:H.indexOf('Hari'),catStats:summary.cats});
@@ -1807,7 +1807,7 @@ function searchCols(s){
   SEARCH.forEach(function(g){for(var i=0;i<g[1].length;i++){var ci=s.heads.indexOf(g[1][i]);if(ci>=0){cols.push({ci:ci,label:g[0]});names.push(g[0]);break}}});
   s._sc={cols:cols,names:names};return s._sc;
 }
-var FILT=[['Devisi','Divisi'],['Divisi','Divisi'],['Nama SA','Nama SA'],['Charge To','Charge To'],['Charge','Charge To'],[SK,'Charge Kategori'],['Jenis','Jenis'],['Advisor','Advisor'],['Mekanik','Mekanik']];
+var FILT=[['Devisi','Divisi'],['Divisi','Divisi'],['Nama SA','Nama SA'],['Service Kategori','Service Kategori'],['Charge To','Charge To'],['Charge','Charge To'],[SK,'Charge Kategori'],['Jenis','Jenis'],['Advisor','Advisor'],['Mekanik','Mekanik']];
 function filterDefs(s){
   var defs=[],seen={};
   FILT.forEach(function(f){
