@@ -90,6 +90,17 @@ iframe.on{display:block}
     font-weight:600;font-size:13.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
   }
   .btn:hover{background:#3457e0;}
+  .live{display:inline-flex;align-items:center;gap:9px;color:var(--muted);font-size:14.5px;--sync:#3b82f6}
+  .live b{color:var(--ink);font-weight:600}
+  .live.off{--sync:#8a90a3} .live.bad{--sync:var(--red)}
+  .sync{width:20px;height:20px;flex:none;display:block}
+  .sync rect{fill:var(--sync,#3b82f6)}
+  .sync .arr{transform-origin:11px 11px}
+  .live.busy .arr,.rbtn.busy .arr{animation:spin 1s linear infinite}
+  .rbtn{display:inline-flex;align-items:center;gap:9px;background:var(--panel-2);border:1px solid var(--border);border-radius:10px;padding:8px 16px;cursor:pointer;font-family:inherit;font-weight:500;font-size:14.5px;color:var(--ink)}
+  .rbtn .sync{width:19px;height:19px;--sync:#3b82f6}
+  .rbtn:hover:not(:disabled){border-color:#cfcfca}
+  .rbtn:disabled{opacity:.55;cursor:default}
   .status{font-size:12.5px;color:var(--muted);}
   .status b{color:var(--ink);}
   .status.err{color:var(--red);}
@@ -209,11 +220,10 @@ iframe.on{display:block}
       <p class="sub" id="source-sub">Sumber: Laporan Piutang</p>
     </div>
     <div class="controls">
-      <label class="toggle"><input type="checkbox" id="auto-toggle" checked> Auto-refresh 60 dtk</label>
-      <button class="btn" id="refresh-btn">&#8635; Refresh sekarang</button>
+      <span class="live off" id="live"><svg class="sync" viewBox="0 0 22 22" aria-hidden="true"><rect width="22" height="22" rx="5"/><g class="arr" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.3 9.6a5 5 0 0 1 8.7-1.7"/><path d="M15.6 5.8v2.9h-2.9"/><path d="M15.7 12.4a5 5 0 0 1-8.7 1.7"/><path d="M6.4 16.2v-2.9h2.9"/></g></svg><span id="livetext">Menghubungkan ke Google Sheet</span></span>
+      <button class="rbtn" id="refresh-btn" type="button"><svg class="sync" viewBox="0 0 22 22" aria-hidden="true"><rect width="22" height="22" rx="5"/><g class="arr" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.3 9.6a5 5 0 0 1 8.7-1.7"/><path d="M15.6 5.8v2.9h-2.9"/><path d="M15.7 12.4a5 5 0 0 1-8.7 1.7"/><path d="M6.4 16.2v-2.9h2.9"/></g></svg>Refresh</button>
     </div>
   </div>
-  <div class="status" id="status">Memuat data...</div>
 
   <div class="banner" id="error-banner"></div>
 
@@ -1105,11 +1115,25 @@ document.querySelectorAll('#innerTabs .tab-btn').forEach(btn => {
   });
 });
 
+var loadBusy = false;
+function setLive(kind, html){
+  var live = document.getElementById('live'), btn = document.getElementById('refresh-btn');
+  live.className = 'live ' + kind;
+  document.getElementById('livetext').innerHTML = html;
+  btn.classList.toggle('busy', kind === 'busy');
+  btn.disabled = (kind === 'busy');
+}
+function stampId(d){
+  var m = MONTH_FULL_ID[d.getMonth() + 1];
+  var hh = ('0' + d.getHours()).slice(-2), mm = ('0' + d.getMinutes()).slice(-2);
+  return d.getDate() + ' ' + m.charAt(0).toUpperCase() + m.slice(1) + ' ' + d.getFullYear() + ', ' + hh + ':' + mm;
+}
 async function loadData() {
-  const statusEl = document.getElementById('status');
+  if (loadBusy) return;
+  loadBusy = true;
   const errBanner = document.getElementById('error-banner');
   errBanner.style.display = 'none';
-  statusEl.innerHTML = '<span class="spin"></span>Mengambil data terbaru...';
+  setLive('busy', 'Menyinkronkan data...');
 
   try {
     const res = await fetch(CSV_URL + '&_ts=' + Date.now(), { cache: 'no-store' });
@@ -1118,26 +1142,21 @@ async function loadData() {
     const rows = parseCSV(text);
     const data = processRows(rows);
     render(data);
-
-    const now = new Date();
-    statusEl.classList.remove('err');
-    statusEl.innerHTML = 'Terakhir disinkron: <b>' + now.toLocaleString('id-ID') + '</b>';
+    setLive('', 'Live \u00b7 tersinkron <b>' + stampId(new Date()) + '</b> \u00b7 otomatis tiap 60 detik');
   } catch (err) {
-    statusEl.classList.add('err');
-    statusEl.textContent = 'Gagal memuat data.';
+    setLive('bad', 'Gagal memuat data \u00b7 mencoba lagi otomatis tiap 60 detik');
     errBanner.style.display = 'block';
     errBanner.textContent = 'Error: ' + err.message + '. Pastikan koneksi internet aktif, dan sheet-nya masih "Published to web" (Google Sheets: File > Share > Publish to web).';
   }
+  loadBusy = false;
 }
 
 document.getElementById('refresh-btn').addEventListener('click', loadData);
 
-const autoToggle = document.getElementById('auto-toggle');
 function setupAutoRefresh() {
   if (autoTimer) clearInterval(autoTimer);
-  if (autoToggle.checked) autoTimer = setInterval(loadData, 60000);
+  autoTimer = setInterval(loadData, 60000);
 }
-autoToggle.addEventListener('change', setupAutoRefresh);
 
 // Dimulai langsung: gerbang password ada di halaman induk
 loadData();
@@ -1657,7 +1676,7 @@ function buildDiv(name,items,raw,fallbackAll,pj,wh,wipRaw,dep){
     facts:[],
     note:'Baris Non PKB: No PKB/WO kosong dan Nama Customer #N/A. Hari diambil dari kolom Hari (V) di Sheet1.',chip:'Non PKB',dateCol:1});
 
-  var H=['No',SK,'TglSupply','NoSupply','No PKB/WO','KodeBrg','Nama Barang','Jlh','Harga','Jumlah','Nama SA','NoPolisi','Divisi','Nama Customer','Type','Service Kategori','Tgl PKB/WO','Hari','Tgl Penitipan','No.Penitipan','Total Penitipan','Keterangan','Alasan'];
+  var H=['No',SK,'TglSupply','NoSupply','Tgl PKB/WO','No PKB/WO','KodeBrg','Nama Barang','Jlh','Harga','Jumlah','Nama SA','NoPolisi','Divisi','Nama Customer','Type','Service Kategori','Hari','Tgl Penitipan','No.Penitipan','Total Penitipan','Keterangan','Alasan'];
   var q=items.slice().sort(function(a,b){
     var oa=rank(a.kat),ob=rank(b.kat);
     return (oa-ob)||cmpNullLast(a.two,b.two)||cmpNullLast(a.wo,b.wo)||cmpNullLast(a.tsup,b.tsup)||cmpNullLast(a.nsup,b.nsup);
@@ -1666,8 +1685,8 @@ function buildDiv(name,items,raw,fallbackAll,pj,wh,wipRaw,dep){
   var rr=[],nums=[],fl=[],fbn=Object.keys(fallbackUsed);
   q.forEach(function(it,k){
     var n=it.kat==='Non PKB';
-    rr.push([String(k+1),it.kat,fdtt(it.tsup),it.nsup,it.wo,it.kode,it.nama,fint(it.jlh),fint(it.harga),fint(it.jum),it.nsa,it.pol,it.dev,
-      n?'#N/A':it.cust,n?'#N/A':it.typ,n?'#N/A':it.srv,n?'#N/A':fdt(it.two),it.hari===null?'':String(it.hari)].concat(depCells(it.wo),[it.ket,it.ala]));
+    rr.push([String(k+1),it.kat,fdtt(it.tsup),it.nsup,n?'#N/A':fdt(it.two),it.wo,it.kode,it.nama,fint(it.jlh),fint(it.harga),fint(it.jum),it.nsa,it.pol,it.dev,
+      n?'#N/A':it.cust,n?'#N/A':it.typ,n?'#N/A':it.srv,it.hari===null?'':String(it.hari)].concat(depCells(it.wo),[it.ket,it.ala]));
     nums.push([it.jlh,it.jum]);fl.push(n);
   });
   var nt='Gabungan semua charge kategori '+(isAll?'dari ketiga divisi':'divisi '+name)+' ('+summary.cats.map(function(c){return c.k}).join(', ')+'). Charge Kategori diambil dari data Charge To; kolom Service Kategori (SrvCateCode) tetap ditampilkan di samping Type.';
