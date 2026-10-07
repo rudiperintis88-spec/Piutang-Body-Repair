@@ -55,8 +55,6 @@ iframe.on{display:block}
     <button class="tab" role="tab" id="t-piutang" aria-selected="true" data-k="piutang">Piutang</button>
     <button class="tab" role="tab" id="t-material" aria-selected="false" data-k="material">Material Belum Faktur</button>
     </div>
-    <span class="sp"></span>
-    <button class="out" id="out" type="button">Keluar</button>
   </div>
   <iframe id="f-piutang" title="Piutang Body Repair"></iframe>
   <iframe id="f-material" title="Material Belum Faktur Body Repair"></iframe>
@@ -2721,7 +2719,6 @@ function show(k){
 document.querySelectorAll('.tab').forEach(function(b){
   b.addEventListener('click',function(){ show(b.dataset.k); });
 });
-document.getElementById('out').addEventListener('click',function(){ location.reload(); });
 
 document.getElementById('gform').addEventListener('submit',function(e){
   e.preventDefault();
