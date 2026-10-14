@@ -360,9 +360,24 @@ function parseAmount(s) {
 }
 function parseDateDDMMYYYY(s) {
   if (!s) return null;
-  const m = s.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (!m) return null;
-  return { day: parseInt(m[1]), month: parseInt(m[2]), year: parseInt(m[3]) };
+  s = String(s).trim();
+  var m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})(?:\D.*)?$/), d, mo, y;   /* 02/10/2026, 2-10-2026, 02.10.2026 (boleh diikuti jam) */
+  if (m) { d = parseInt(m[1], 10); mo = parseInt(m[2], 10); y = parseInt(m[3], 10); }
+  else {
+    m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:\D.*)?$/);                                   /* 2026-10-02 */
+    if (!m) return null;
+    y = parseInt(m[1], 10); mo = parseInt(m[2], 10); d = parseInt(m[3], 10);
+  }
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  return { day: d, month: mo, year: y };
+}
+/* Hari dihitung otomatis per hari berjalan: hari ini dikurangi Tgl Jto (negatif bila belum jatuh tempo). Kolom Hari di Sheet1 tidak dipakai lagi.
+   Bila Tgl Jto kosong / tidak terbaca, Hari dikosongkan. */
+function hariBerjalan(tgljto) {
+  var d = parseDateDDMMYYYY(tgljto);
+  if (!d) return '';
+  var t = new Date();
+  return String(Math.round((Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()) - Date.UTC(d.year, d.month - 1, d.day)) / 86400000));
 }
 function extractPerDate(title) {
   if (!title) return '';
@@ -510,7 +525,7 @@ function processRows(rows) {
     var nama = g('nama'); nama = NAME_MAP[nama] || nama;
     var f = { cust: g('cust'), faktur: g('faktur'), divisi: g('divisi'), rawKat: g('kategori') };
     return { nama: nama, cust: f.cust, faktur: f.faktur, tgljto: g('tgljto'), nopol: g('nopol'),
-             sa: g('sa'), hari: g('hari'), jumlah: parseAmount(g('jumlah')), top: g('top'), giro: g('giro'), sacode: g('sacode'),
+             sa: g('sa'), hari: hariBerjalan(g('tgljto')), jumlah: parseAmount(g('jumlah')), top: g('top'), giro: g('giro'), sacode: g('sacode'),
              divisi: normalizeDivisi(f.divisi), kategori: tentukanKategori(f) };
   });
   return buildData(invs, reportTitle);
@@ -1591,18 +1606,29 @@ function money(n){var a=Math.abs(n);function d(x){return x.toFixed(2).replace('.
 /* ---------- membangun model ---------- */
 var SA_DEFAULT={'PURNOMO':'TRI SUSILO PURNOMO','NZR':'JUNIZAR LUBIS','FERI':'FERY PRAYOGI','SALSA':'SALSA NABILA','WAN':'WANDANI SIBURIAN','SUPRA':'SUPRAYOGO','YUSRON':'M YUSRON','CHRIS':'CHRISTIANTO SEBAYANG','DEDIA066':'DEDI ASDHARMA','MNURS104':'M.NUR SYAHPUTRA','HUDA':'M. KHOIR AL HUDA','TOMY':'TOMY SURYA','RUDIA010':'RUDIANTO','ADHIT042':'ADHITIA DWI PRASETYA','FAHMI':'M. FAHMI SIREGAR','YUDIR':'YUDI RAHMANTO','POPOH038':'POPO HARIANSYAH','HENGK035':'HENGKI PRANATA'},SAMAP={};
 var DIVS=['GR Adam Malik','Body Repair','GR Flamboyan'],ALL='Semua Cabang',DRANK={'GR Adam Malik':0,'Body Repair':1,'GR Flamboyan':2};
-function divOf(dev){
-  var d=String(dev||'').toLowerCase();
-  if(/\bgr\b/.test(d)||d.indexOf('general repair')>-1){
-    if(d.indexOf('adam')>-1)return 'GR Adam Malik';
-    if(d.indexOf('flamboyan')>-1)return 'GR Flamboyan';
-  }
-  return 'Body Repair';
+var DIV_SEEN={};
+/* Aturan divisi (urutan penting):
+   Nama : "Flamboyan BP" = Body Repair | "Flamboyan Service"/GR Flamboyan = GR Flamboyan | "Adam Malik" = GR Adam Malik | "Otoxpert" = Otoxpert (tanpa GR)
+   Kode dokumen (PKB/WO atau No Supply, mis. 000149/WO/PB/02/26): PP = GR Adam Malik | PB = Body Repair | PF = GR Flamboyan | OX = Otoxpert
+   Nama dipakai dulu. Kode OX selalu = Otoxpert (kata Otoxpert tidak perlu ada). Kode lain hanya dipakai kalau kolom Divisi KOSONG. Nama baru yang tidak dikenal otomatis jadi tab baru. */
+var DIV_KODE={PP:'GR Adam Malik',PB:'Body Repair',PF:'GR Flamboyan',OX:'Otoxpert'};
+function divByKode(ref){var m=String(ref||'').match(/\/(PP|PB|PF|OX)\//i);return m?DIV_KODE[m[1].toUpperCase()]:''}
+function divOf(dev,ref){
+  var raw=String(dev||'').replace(/\s+/g,' ').trim(),d=raw.toLowerCase();
+  if(divByKode(ref)==='Otoxpert')return 'Otoxpert';   /* kode OX = Otoxpert, tanpa perlu kata Otoxpert di kolom Divisi */
+  if(d.indexOf('flamboyan')>-1)return /\bbp\b|body|repair/.test(d)&&d.indexOf('general repair')<0?'Body Repair':'GR Flamboyan';
+  if(d.indexOf('adam')>-1)return 'GR Adam Malik';
+  if(/oto\s*xpert/.test(d))return 'Otoxpert';
+  if(d.indexOf('body')>-1||/^bp$/.test(d))return 'Body Repair';
+  if(!raw)return divByKode(ref)||'Body Repair';
+  return DIV_SEEN[d]||(DIV_SEEN[d]=raw);
 }
 function build(raw){
   var ctMap={},wipMap={};
   raw.ct.forEach(function(c){if(c[0]&&!ctMap[c[0]])ctMap[c[0]]={type:str(c[1]),srv:normChg(c[2]),chg:normChg(c[3]),tgl:c[4]||'',nama:str(c[5])}});
   var wh=raw.wip.heads,wi={};wh.forEach(function(h,k){wi[h]=k});
+  /* Divisi di PKB WIP: pakai nama bila terisi; bila kosong dibaca dari kode NoWO (PP = GR Adam Malik, PB = Body Repair, PF = GR Flamboyan) */
+  if(wi['Divisi']!==undefined)raw.wip.rows.forEach(function(r){r[wi['Divisi']]=divOf(r[wi['Divisi']],r[wi['NoWO']])});
   raw.wip.rows.forEach(function(w){var k=w[wi['NoWO']];if(k&&!wipMap[k])wipMap[k]={type:str(w[wi['Type']]),nama:str(w[wi['Nama']]),chg:normChg(w[wi['Charge']])}});
   WOTGL={};Object.keys(ctMap).forEach(function(k){if(ctMap[k].tgl)WOTGL[k]=ctMap[k].tgl});
   Object.keys(FALLBACK).forEach(function(k){if(!WOTGL[k])WOTGL[k]=FALLBACK[k].tgl});
@@ -1620,14 +1646,20 @@ function build(raw){
         fallbackUsed[wo]=true;
       }
     }
-    if(it.hari===null&&it.two&&raw.repISO)it.hari=dayDiff(raw.repISO,it.two);
+    /* Hari dihitung otomatis per hari berjalan: hari ini dikurangi TglWO; bila TglWO tidak ada, dikurangi TglSupply. Kolom Hari di Sheet1 tidak dipakai lagi. */
+    var bd=it.two?String(it.two).slice(0,10):(it.tsup?String(it.tsup).slice(0,10):'');
+    it.hari=/^\d{4}-\d\d-\d\d$/.test(bd)?Math.max(0,dayDiff(todayISO(),bd)):null;
     it.kat=(!wo&&!it.cust)?'Non PKB':(it.chg||'Tanpa Kategori');
-    it.div=divOf(it.dev);
+    it.div=divOf(it.dev,it.wo||it.nsup);it.dev=it.div;
     if(it.wo&&it.two&&!WOTGL[it.wo])WOTGL[it.wo]=it.two;
     items.push(it);
   });
   SAMAP={};Object.keys(SA_DEFAULT).forEach(function(k){SAMAP[k]=SA_DEFAULT[k]});
   items.forEach(function(it){if(it.ksa&&it.nsa)SAMAP[it.ksa]=it.nsa});
+  /* PKB/WO (Work In Process): PKB/WO yang sudah ada di Sheet1 tidak lagi dianggap WIP (sudah masuk laporan material belum faktur). Pencocokan berdasarkan nomor PKB/WO. */
+  var inS1={},wnI=wi['NoWO'];
+  raw.s1.forEach(function(x){if(x[3])inS1[woKey(x[3])]=1});
+  var hidWip=[],wipRows=raw.wip.rows.filter(function(r){var k=wnI===undefined?'':r[wnI];if(k&&inS1[woKey(k)]){hidWip.push(r);return false}return true});
   var pj={},dep={};
   raw.dt.forEach(function(d){
     var w=d[2];if(!w)return;
@@ -1641,18 +1673,22 @@ function build(raw){
     e.dates=ds.join('; ');e.nos=e.list.map(function(x){return x.n}).filter(Boolean).join('; ');
   });
   var dvI0=wh.indexOf('Divisi');
-  var divs=[buildDiv(ALL,items,raw,fallbackUsed,pj,wh,raw.wip.rows,dep)].concat(DIVS.map(function(name){
+  var divs=[buildDiv(ALL,items,raw,fallbackUsed,pj,wh,wipRows,dep)].concat(DIVS.map(function(name){
     var its=items.filter(function(it){return it.div===name});
     var dvI=wh.indexOf('Divisi');
-    var wr=raw.wip.rows.filter(function(r){return divOf(dvI>=0&&r[dvI]?r[dvI]:'Body Repair')===name});
+    var wr=wipRows.filter(function(r){return (dvI>=0?r[dvI]:divOf('',r[wi['NoWO']]))===name});
     return buildDiv(name,its,raw,fallbackUsed,pj,wh,wr,dep);
   }));
+  if(hidWip.length){var dvW=wh.indexOf('Divisi');divs.forEach(function(d){
+    var n=d.name===ALL?hidWip.length:hidWip.filter(function(r){return (dvW>=0?r[dvW]:divOf('',r[wnI]))===d.name}).length;
+    if(n)d.sheets.forEach(function(s){if(s.name===WIP&&s.facts)s.facts.push('<li><b>'+fint(n)+'</b> PKB/WO tidak ditampilkan di sini karena sudah ada di Sheet1</li>')});
+  })}
   var gk={};divs.forEach(function(d){if(d.name!==ALL)d.summary.cats.forEach(function(c){gk[c.k]=1})});
   var gRows=Object.keys(gk).map(function(){return ''});
   divs.forEach(function(d){d.sheets.forEach(function(s){if(s.view==='gabungan')s.rows=gRows.slice()})});
   var totV=0,totQ=0;items.forEach(function(it){totV+=it.jum;totQ+=it.jlh});
   return {divs:divs,marker:raw.marker,repISO:raw.repISO,totalRows:items.length,
-    sig:[raw.marker,items.length,totQ,totV,raw.ct.length,raw.dt.length,raw.wip.rows.length,divs.map(function(d){return d.summary.rows+':'+d.summary.bk.map(function(b){return b.v}).join(',')}).join(';')].join('|')};
+    sig:[raw.marker,todayISO(),items.length,totQ,totV,raw.ct.length,raw.dt.length,raw.wip.rows.length,divs.map(function(d){return d.summary.rows+':'+d.summary.bk.map(function(b){return b.v}).join(',')}).join(';')].join('|')};
 }
 function buildDiv(name,items,raw,fallbackAll,pj,wh,wipRaw,dep){
   var isAll=(name===ALL);
@@ -1775,31 +1811,68 @@ function normWO(s){
   var m=/^\s*(\d{6})[./]WO[./]([A-Za-z]+)[./](\d\d)[./](\d\d)\s*$/.exec(String(s||''));
   return m?(m[1]+'/WO/'+m[2].toUpperCase()+'/'+m[3]+'/'+m[4]):'';
 }
+/* ---------- sheet "Data SA": sumber Nama SA, Keterangan, dan Alasan ---------- */
+function woKey(s){var t=String(s===null||s===undefined?'':s).trim();return normWO(t)||t.toUpperCase()}
+function readDataSA(wb){
+  var nm=null,i,lc=function(v){return String(v===null||v===undefined?'':v).replace(/\s+/g,' ').trim().toLowerCase()};
+  for(i=0;i<wb.SheetNames.length;i++)if(lc(wb.SheetNames[i])==='data sa'){nm=wb.SheetNames[i];break}
+  if(!nm)return null;
+  var g=gridOf(wb.Sheets[nm]),hi=-1,H=null;
+  for(i=0;i<g.length&&i<15;i++){var hh=g[i].map(lc);if(hh.indexOf('kode sa')>-1||hh.indexOf('no pkb/wo')>-1){hi=i;H=hh;break}}
+  if(hi<0)return null;
+  var iK=H.indexOf('kode sa'),iN=H.indexOf('nama sa'),iW=H.indexOf('no pkb/wo'),iT=H.indexOf('keterangan'),iA=H.indexOf('alasan');
+  var sa={},wo={},ns=0,nw=0;
+  for(i=hi+1;i<g.length;i++){
+    var r=g[i];
+    if(iK>-1&&iN>-1&&!emp(r[iK])&&!emp(r[iN])){sa[String(r[iK]).trim().toUpperCase()]=String(r[iN]).trim();ns++}
+    if(iW>-1&&!emp(r[iW])){wo[woKey(r[iW])]=[iT>-1&&!emp(r[iT])?String(r[iT]).trim():'',iA>-1&&!emp(r[iA])?String(r[iA]).trim():''];nw++}
+  }
+  return {sa:sa,wo:wo,ns:ns,nw:nw};
+}
 function adapt(wb){
   var need=['Sheet1','Charge To','PKB WIP','Data'],i;
   for(i=0;i<need.length;i++)if(!wb.Sheets[need[i]])throw {code:'struktur',message:'Sheet "'+need[i]+'" tidak ditemukan di Google Sheet.'};
-  var g1=gridOf(wb.Sheets['Sheet1']),marker=null,hi=-1;
+  var g1=gridOf(wb.Sheets['Sheet1']),marker=null,hi=-1,cmap=null,j;
+  /* Kolom Sheet1 dicari berdasarkan NAMA JUDUL, bukan urutan. Kolom yang tidak terpakai boleh dihapus; kolom yang tidak ada dianggap kosong. */
+  var lc1=function(v){return String(v===null||v===undefined?'':v).replace(/\s+/g,' ').trim().toLowerCase()};
+  var COLS=[['no'],['tglsupply','tgl supply'],['nosupply','no supply'],['no pkb/wo','no pkb / wo','nowo','no wo'],['kodebrg','kode brg','kode barang'],['nama barang'],['jlh','qty'],['harga'],['jumlah'],['kode sa'],['nama sa'],['nopolisi','no polisi','no. polisi'],['divisi'],['nama customer'],['type'],['srvcatecode','srv cate code'],['charge to'],['tglwo','tgl wo'],['keterangan'],['alasan']];
   for(i=0;i<g1.length;i++){
-    var a=g1[i][0];
-    if(marker===null&&typeof a==='string'&&/^\s*Per\s*:/i.test(a))marker=a.trim();
-    if(hi<0&&a==='No'&&g1[i][1]==='TglSupply'){hi=i;break}
+    var rw=g1[i];
+    for(j=0;j<rw.length&&marker===null;j++)if(typeof rw[j]==='string'&&/^\s*Per\s*:/i.test(rw[j]))marker=rw[j].trim();
+    var hl=rw.map(lc1);
+    if(hl.indexOf('jumlah')>-1&&COLS[3].some(function(n){return hl.indexOf(n)>-1})){
+      hi=i;cmap=COLS.map(function(al){for(var q=0;q<al.length;q++){var p=hl.indexOf(al[q]);if(p>-1)return p}return -1});break;
+    }
   }
-  if(hi<0)throw {code:'struktur',message:'Judul kolom di Sheet1 (No, TglSupply, ...) tidak ditemukan.'};
-  var hv=g1[hi].indexOf('Hari');
+  if(hi<0)throw {code:'struktur',message:'Judul kolom di Sheet1 tidak ditemukan. Sheet1 minimal harus punya kolom "No PKB/WO" dan "Jumlah".'};
+  var hv=g1[hi].map(lc1).indexOf('hari');
   var s1=[],grand=null,repdate=null;
+  var gv=function(r,k){var p=cmap[k],v=p>-1?r[p]:null;return v===undefined?null:v};
+  var fne=function(r){for(var q=0;q<r.length;q++)if(r[q]!==null&&r[q]!=='')return r[q];return null};
   for(i=hi+1;i<g1.length;i++){
-    var r=g1[i];
-    if(typeof r[0]==='string'&&r[0].indexOf('Grand Total')===0){grand={qty:r[6],val:r[8]};var nx=g1[i+1];repdate=nx?toISOAny(nx[0]):null;break}
-    if(typeof r[0]==='number'){var x=r.slice(0,20);while(x.length<20)x.push(null);x[1]=toISOAny(x[1]);x[17]=toISOAny(x[17]);x.push(hv>=0?r[hv]:null);s1.push(x)}
+    var r=g1[i],f0=fne(r);
+    if(typeof f0==='string'&&f0.indexOf('Grand Total')===0){grand={qty:gv(r,6),val:gv(r,8)};var nx=g1[i+1],f1=nx?fne(nx):null;repdate=f1!==null?toISOAny(f1):null;break}
+    if(cmap[0]>-1?typeof r[cmap[0]]==='number':(typeof gv(r,8)==='number'&&[1,2,3,4,5].some(function(k){var v=gv(r,k);return v!==null&&v!==''}))){
+      var x=[];for(j=0;j<20;j++)x.push(gv(r,j));
+      if(cmap[0]<0)x[0]=s1.length+1;
+      x[1]=toISOAny(x[1]);x[17]=toISOAny(x[17]);x.push(hv>=0?r[hv]:null);s1.push(x);
+    }
   }
+  /* Nama SA diambil dari sheet "Data SA" (Kode SA -> Nama SA); Keterangan dan Alasan dari sheet "Data SA" (No PKB/WO).
+     PKB/WO yang belum ada di "Data SA" tampil "-". Bila sheet "Data SA" tidak ada, dipakai isi Sheet1 seperti sebelumnya. */
+  var dsa=readDataSA(wb);
+  if(dsa)s1.forEach(function(x){
+    var nm=dsa.sa[String(x[9]===null||x[9]===undefined?'':x[9]).trim().toUpperCase()];if(nm)x[10]=nm;
+    if(x[3]){var rc=dsa.wo[woKey(x[3])];x[18]=(rc&&rc[0])?rc[0]:'-';x[19]=(rc&&rc[1])?rc[1]:'-'}
+  });
   var need1={};s1.forEach(function(x){if(x[3])need1[x[3]]=1});
   var gc=gridOf(wb.Sheets['Charge To']),ct=[],cth=gc.length?gc[0]:[];
-  var cI={wo:0,type:cth.indexOf('Type'),srv:cth.indexOf('SrvCateCode'),chg:cth.indexOf('Kategori'),tgl:cth.indexOf('TglWO')};
-  if(cI.chg<0)cI.chg=cth.indexOf('No');
+  var cI={wo:(cth.indexOf('NoWO')>-1?cth.indexOf('NoWO'):0),type:cth.indexOf('Type'),srv:cth.indexOf('SrvCateCode'),chg:cth.indexOf('Kategori'),tgl:cth.indexOf('TglWO')};
+  if(cI.chg<0)cI.chg=cth.indexOf('Charge To');if(cI.chg<0)cI.chg=cth.indexOf('No');
   if(cI.type<0)cI.type=2;if(cI.srv<0)cI.srv=4;if(cI.chg<0)cI.chg=5;if(cI.tgl<0)cI.tgl=6;
   var nI=cth.lastIndexOf('NAMA');if(nI<0)nI=8;
   for(i=1;i<gc.length;i++){
-    var c=gc[i];if(!c[0])continue;
+    var c=gc[i];if(!c[cI.wo])continue;
     /* tata letak lama: kolom H berisi NoWO lagi, nama di kolom I. Tata letak baru (baris GR): kolom H langsung nama. */
     var nm=(typeof c[nI-1]==='string'&&c[nI-1].indexOf('/WO/')>-1)?c[nI]:c[nI-1];
     ct.push([c[cI.wo],c[cI.type],c[cI.srv],c[cI.chg],toISOAny(c[cI.tgl]),nm]);
@@ -1810,7 +1883,7 @@ function adapt(wb){
   var needW={};var nwI=heads.indexOf('NoWO');wrows.forEach(function(w){if(w[nwI])needW[w[nwI]]=1});
   ct=ct.filter(function(c){return need1[c[0]]||needW[c[0]]});
   var gd=gridOf(wb.Sheets['Data']),dh=-1;
-  for(i=0;i<gd.length;i++)if(gd[i][0]==='No'){dh=i;break}
+  for(i=0;i<gd.length;i++){var dl=gd[i].map(function(v){return String(v===null||v===undefined?'':v).trim().toLowerCase()});if(dl.indexOf('tgl penitipan')>-1&&dl.indexOf('no.penitipan')>-1){dh=i;break}}
   var dt=[];
   if(dh>=0){
     var dH=gd[dh],iT=dH.indexOf('Tgl Penitipan'),iN=dH.indexOf('No.Penitipan'),iW=dH.indexOf('WO'),iU=dH.indexOf('Untuk'),iTn=dH.indexOf('Tunai'),iG=dH.indexOf('Cheque/Giro'),iK=dH.indexOf('Nota Kredit'),iTo=dH.indexOf('Total');
