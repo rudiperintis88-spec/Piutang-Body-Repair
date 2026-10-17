@@ -305,6 +305,42 @@ iframe.on{display:block}
 // Kalau data yang tampil ternyata basi, buka sheet-nya lalu: File > Share > Publish to web > Republish.
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTM7G5Mv4eC4DN3u_xkvUBCu3LYgZxMIEq0lY9QOKykZudX02ANnM0-2GwxtQ28gJjEEzThOWWj__Az/pub?gid=0&single=true&output=csv";
 
+// Nama debitur dibaca otomatis dari sheet "Data Per Faktur" (acuan: No. Faktur). File ini dibagikan "siapa saja dengan link",
+// jadi sheet-nya dibaca lewat nama. Bila sheet itu belum terbaca, nama debitur dari Sheet1 dipakai.
+const DPF_FILE_ID = "1MnWBxy3DmLMb4KJFSCWB4Rde-L40SxYrIpP4pfCLaQI";
+const DPF_URL = "https://docs.google.com/spreadsheets/d/" + DPF_FILE_ID + "/gviz/tq?tqx=out:csv&headers=0&sheet=" + encodeURIComponent("Data Per Faktur");
+var FAKTUR_NAMES = null;
+function fakturKey(s){ return String(s == null ? '' : s).replace(/\s+/g, ' ').trim().toUpperCase(); }
+function buildFakturNames(rows){
+  var iF = -1, iN = -1, hi = -1, i, j;
+  for (i = 0; i < rows.length && i < 15 && hi < 0; i++){
+    var h = (rows[i] || []).map(function(c){ return String(c == null ? '' : c).replace(/^\uFEFF/, '').toLowerCase().replace(/[^a-z0-9]/g, ''); });
+    var f = -1, n = -1;
+    for (j = 0; j < h.length; j++){
+      if (f < 0 && ['fakturno','nofaktur','faktur'].indexOf(h[j]) >= 0) f = j;
+      if (n < 0 && ['namadebitur','debitur','namacustomer'].indexOf(h[j]) >= 0) n = j;
+    }
+    if (f >= 0 && n >= 0){ hi = i; iF = f; iN = n; }
+  }
+  if (hi < 0) return null;
+  var map = {}, cnt = 0;
+  for (i = hi + 1; i < rows.length; i++){
+    var r = rows[i] || [], k = fakturKey(r[iF]), nm = String(r[iN] == null ? '' : r[iN]).trim();
+    if (!k || !nm || map[k]) continue;
+    map[k] = nm; cnt++;
+  }
+  return cnt ? map : null;
+}
+async function fetchFakturNames(){
+  try {
+    const res = await fetch(DPF_URL + '&_ts=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const t = await res.text();
+    if (/^\s*</.test(t)) throw new Error('bukan CSV');
+    return buildFakturNames(parseCSV(t.replace(/^\uFEFF/, '')));
+  } catch (e) { return null; }
+}
+
 var MONTH_NAMES = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 var MONTH_FULL_ID = ['','januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'];
 var NAME_MAP = {
@@ -487,9 +523,10 @@ function mapColumns(hdr){
   Object.keys(COL_ALIASES).forEach(function(k){
     var found = -1;
     for (var j = 0; j < hdr.length; j++){ if (COL_ALIASES[k].indexOf(normHdr(hdr[j])) >= 0){ found = j; break; } }
-    if (found >= 0) col[k] = found;
+    if (found >= 0) col[k] = found; else if (k === 'nama') col[k] = -1;
     if (k === 'divisi' || k === 'kategori' || k === 'hari') info.push(k.charAt(0).toUpperCase() + k.slice(1) + '=' + colLetter(col[k]) + (found >= 0 ? '' : ' (default)'));
   });
+  if (col.nama > col.faktur) col.nama = -1;
   COL_INFO = 'Kolom: ' + info.join(', ');
   return col;
 }
@@ -522,7 +559,7 @@ function processRows(rows) {
 
   var invs = dataRows.map(function(r){
     var g = function(k){ var v = r[COL[k]]; return (v == null ? '' : String(v)).trim(); };
-    var nama = g('nama'); nama = NAME_MAP[nama] || nama;
+    var nama = g('nama'); var refNama = FAKTUR_NAMES && FAKTUR_NAMES[fakturKey(g('faktur'))]; if (refNama) nama = refNama; nama = NAME_MAP[nama] || nama; if (!nama) nama = '(Tanpa nama debitur)';
     var f = { cust: g('cust'), faktur: g('faktur'), divisi: g('divisi'), rawKat: g('kategori') };
     return { nama: nama, cust: f.cust, faktur: f.faktur, tgljto: g('tgljto'), nopol: g('nopol'),
              sa: g('sa'), hari: hariBerjalan(g('tgljto')), jumlah: parseAmount(g('jumlah')), top: g('top'), giro: g('giro'), sacode: g('sacode'),
@@ -1194,13 +1231,16 @@ async function loadData() {
   setLive('busy', 'Menyinkronkan data...');
 
   try {
+    const namesP = fetchFakturNames();
     const res = await fetch(CSV_URL + '&_ts=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const text = await res.text();
     const rows = parseCSV(text);
+    const namesNow = await namesP;
+    if (namesNow) FAKTUR_NAMES = namesNow;   // bila gagal dibaca sekarang, daftar terakhir yang berhasil tetap dipakai
     const data = processRows(rows);
     render(data);
-    setLive('', 'Live \u00b7 tersinkron <b>' + stampId(new Date()) + '</b> \u00b7 otomatis tiap 60 detik');
+    setLive('', 'Live \u00b7 tersinkron <b>' + stampId(new Date()) + '</b> \u00b7 otomatis tiap 60 detik' + (FAKTUR_NAMES ? '' : ' &middot; <span title="Sheet Data Per Faktur belum bisa dibaca">nama debitur dari Sheet1</span>'));
   } catch (err) {
     setLive('bad', 'Gagal memuat data \u00b7 mencoba lagi otomatis tiap 60 detik');
     errBanner.style.display = 'block';
