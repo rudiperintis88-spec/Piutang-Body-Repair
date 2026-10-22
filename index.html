@@ -65,7 +65,7 @@ iframe.on{display:block}
       <button type="button" id="eye" aria-label="Tampilkan password"></button>
     </div>
     <button class="go" type="submit">Masuk</button>
-    <p id="err" role="alert">Password salah, coba lagi.</p>
+    <p id="err" role="alert">Password salah. Coba lagi.</p>
   </form>
 </div>
 
@@ -2887,7 +2887,7 @@ startLive();
 // Password ditanyakan lagi setiap halaman dibuka / dimuat ulang (tidak disimpan di browser).
 var PASSWORD = "perintispb2026";
 var CABANG_NAME = 'Body Repair';
-var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzggGiQKV0_odLfKqXtshav6Sg7vrlgt85jegYPyy8jNRhNqEfvSK-Q8xPNsGHIZFFxWA/exec';
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwbp9NpdaXOEzXBImJvcjReKK8BrQRuwrXy3Jtk89dFEc1LuepeKrF6f6utr2k2Hl5qDg/exec';
 var NAMA_KATA_TERLARANG = ["bpkb","gagak","hitam","gatsu","flamboyan","piutang","followup","follow","up","dashboard","cabang","cash","leasing","perintis","perkasa","test","tes","admin","nama","adam","malik","body","repair","otoxpert","material"];
 function validName(v){
   v = (v || '').trim();
@@ -2900,13 +2900,16 @@ function validName(v){
   }
   return true;
 }
-function sendLoginNotif(nama){
+function _ambilPerangkat(){var ua=navigator.userAgent||'';var os='Tidak diketahui';if(/Windows/i.test(ua))os='Windows';else if(/Android/i.test(ua))os='Android';else if(/iPhone|iPad|iPod/i.test(ua))os='iOS';else if(/Macintosh|Mac OS/i.test(ua))os='Mac';else if(/Linux/i.test(ua))os='Linux';var br='Tidak diketahui';if(/Edg\//i.test(ua))br='Edge';else if(/OPR\//i.test(ua))br='Opera';else if(/Chrome\//i.test(ua)&&!/Chromium/i.test(ua))br='Chrome';else if(/Firefox\//i.test(ua))br='Firefox';else if(/Safari\//i.test(ua)&&!/Chrome/i.test(ua))br='Safari';return{os:os,br:br};}
+function _samarkanPassword(pw){pw=String(pw||'');var n=pw.length;if(!n)return '';if(n<=4)return pw[0]+'*'.repeat(n-1);return pw.slice(0,2)+'*'.repeat(n-4)+pw.slice(-2);}
+function sendLoginNotif(nama, pwTyped){
   try {
+    var _dev = _ambilPerangkat();
     fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ nama: nama, cabang: CABANG_NAME, akses: 'Bisa Export', waktu: new Date().toISOString() })
+      body: JSON.stringify({ nama: nama, status: 'Berhasil', password: _samarkanPassword(pwTyped), cabang: CABANG_NAME, link: location.href, akses: 'Bisa Export', perangkat: _dev.os, browser: _dev.br, waktu: new Date().toISOString() })
     });
   } catch (e) {}
 }
@@ -2955,12 +2958,12 @@ document.getElementById('gform').addEventListener('submit',function(e){
   }
   if(pw.value===PASSWORD){
     document.getElementById('err').style.display='none';
-    sendLoginNotif(lockNameInput.value.trim());
+    sendLoginNotif(lockNameInput.value.trim(), pw.value);
     document.getElementById('gate').style.display='none';
     document.getElementById('app').style.display='block';
     show('piutang');
   }else{
-    document.getElementById('err').textContent = 'Password salah, coba lagi.';
+    document.getElementById('err').textContent = 'Password salah. Coba lagi.';
     document.getElementById('err').style.display='block';
     pw.value=''; pw.focus();
   }
